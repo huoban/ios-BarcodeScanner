@@ -1,0 +1,23 @@
+# 构建产物
+code/build/
+build/
+bin/
+obj/
+dist/
+*.xcarchive
+*.ipa
+*.xcodeproj/
+
+# 安卓参考仓库（只读来源，不纳入本仓库）
+reference/
+
+# 环境与缓存
+.DS_Store
+__pycache__/
+*.pyc
+
+# 密钥
+*.p12
+*.pem
+*.mobileprovision
+.env
