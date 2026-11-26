@@ -19,6 +19,7 @@ struct ScannerView: View {
     @State private var toast: String?
     @State private var isFlashOn = false
     @State private var scanStartTime = Date()
+    @State private var lastHandledTimestamp: Int64 = 0
 
     private var isSubpageActive: Bool {
         showSettings || showHistory || showWeb
@@ -217,6 +218,10 @@ struct ScannerView: View {
     }
 
     private func handleDetected(result: ScanResult, buffer: CMSampleBuffer?) {
+        // 双保险：同一时间戳的结果只处理一次
+        guard result.timestamp != lastHandledTimestamp else { return }
+        lastHandledTimestamp = result.timestamp
+
         // 解码确认时 BarcodeScanner 已同步置为暂停，这里先落盘再决定展示方式
         let path = buffer.flatMap { ImageStore.save(sampleBuffer: $0, timestamp: result.timestamp) }
         store.insert(result: result, imagePath: path)
