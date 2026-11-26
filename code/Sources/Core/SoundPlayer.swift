@@ -1,6 +1,7 @@
 import AVFoundation
 import AudioToolbox
 import Foundation
+import UIKit
 
 /// 与 Android SoundPlayer 参数一致的原生提示音合成
 enum SoundPlayer {
@@ -34,7 +35,7 @@ enum SoundPlayer {
         engine.connect(player, to: engine.mainMixerNode, format: format)
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.ambient, mode: .default, options: [])
-        try? session.activate()
+        try? session.setActive(true)
         do {
             try engine.start()
             player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)

@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreFoundation
 import CoreMedia
 import Foundation
 import UIKit
@@ -141,7 +142,8 @@ final class BarcodeScanner: NSObject, ObservableObject {
            let device = device, device.isZoomSupported() {
             do {
                 try device.lockForConfiguration()
-                device.videoZoomFactor = min(max(initialZoom, device.minAvailableVideoZoomFactor), device.maxAvailableVideoZoomFactor)
+                let zoom = CGFloat(initialZoom)
+                device.videoZoomFactor = min(max(zoom, device.minAvailableVideoZoomFactor), device.maxAvailableVideoZoomFactor)
                 device.unlockForConfiguration()
             } catch {
                 NSLog("apply initial zoom failed: \(error)")

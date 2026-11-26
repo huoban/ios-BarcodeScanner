@@ -40,8 +40,10 @@ final class ViewfinderDrawView: UIView {
         let mask = UIBezierPath(rect: rect)
         let hole = UIBezierPath(roundedRect: holeFrame, cornerRadius: 8)
         mask.append(hole)
-        UIColor.black.withAlphaComponent(0.5).setFill()
-        mask.fill(using: .evenOdd)
+        if let context = UIGraphicsGetCurrentContext() {
+            context.setFillColor(UIColor.black.withAlphaComponent(0.5).cgColor)
+            context.fill(mask.cgPath, using: .evenOdd)
+        }
         UIColor.green.setStroke()
         hole.lineWidth = 2
         hole.stroke()

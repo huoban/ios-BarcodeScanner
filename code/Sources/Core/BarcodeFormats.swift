@@ -50,13 +50,15 @@ enum BarcodeFormat: String, CaseIterable, Identifiable {
         case .qr: return [.qr]
         case .dataMatrix: return [.dataMatrix]
         case .code39: return [.code39]
-        case .upcean: return [.ean13, .ean8, .upca, .upce]
+        case .upcean: return [.ean13, .ean8, .upce]
         case .code128: return [.code128]
         case .pdf: return [.pdf417]
         case .aztec: return [.aztec]
         case .code93: return [.code93]
         case .code2of5: return [.itf14]
-        case .codabar: return [.codabar]
+        case .codabar:
+            if #available(iOS 15.4, *) { return [.codabar] }
+            return []
         }
     }
 
@@ -91,20 +93,19 @@ enum BarcodeFormat: String, CaseIterable, Identifiable {
     }
 
     static func displayName(for type: AVMetadataObject.ObjectType) -> String {
+        if #available(iOS 15.4, *), type == .codabar { return "Codabar" }
         switch type {
         case .qr: return "QR Code"
         case .dataMatrix: return "Data Matrix"
         case .code39: return "Code 39"
         case .ean13: return "EAN-13"
         case .ean8: return "EAN-8"
-        case .upca: return "UPC-A"
         case .upce: return "UPC-E"
         case .code128: return "Code 128"
         case .pdf417: return "PDF417"
         case .aztec: return "Aztec"
         case .code93: return "Code 93"
         case .itf14: return "ITF"
-        case .codabar: return "Codabar"
         default: return "Unknown (\(type.rawValue))"
         }
     }
