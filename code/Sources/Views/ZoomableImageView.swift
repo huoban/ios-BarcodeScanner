@@ -45,7 +45,7 @@ struct ZoomableImageView: UIViewRepresentable {
     func updateUIView(_ uiView: ZoomScrollView, context: Context) {
         guard context.coordinator.loadedPath != path else { return }
         context.coordinator.loadedPath = path
-        uiView.contentImageView.image = ImageStore.image(at: path)
+        uiView.contentImageView.image = ImageStore.portraitImage(at: path)
         uiView.setZoomScale(1, animated: false)
         uiView.setNeedsLayout()
     }

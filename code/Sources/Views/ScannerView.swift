@@ -223,7 +223,13 @@ struct ScannerView: View {
         lastHandledTimestamp = result.timestamp
 
         // 解码确认时 BarcodeScanner 已同步置为暂停，这里先落盘再决定展示方式
-        let path = buffer.flatMap { ImageStore.save(sampleBuffer: $0, timestamp: result.timestamp) }
+        let path = buffer.flatMap {
+            ImageStore.save(
+                sampleBuffer: $0,
+                timestamp: result.timestamp,
+                isFrontCamera: self.preferences.useFrontCamera
+            )
+        }
         store.insert(result: result, imagePath: path)
 
         if preferences.soundEnabled { SoundPlayer.play(preferences: preferences) }
