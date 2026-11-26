@@ -40,7 +40,7 @@ jobs:
           fi
 
       - name: Generate Xcode project
-        run: xcodegen generate --spec code/project.yml --project code/BarcodeScanner.xcodeproj
+        run: xcodegen generate --spec code/project.yml
 
       - name: Build IPA
         env:

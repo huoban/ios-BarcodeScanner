@@ -11,7 +11,7 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
 if [ ! -d "$ROOT/BarcodeScanner.xcodeproj" ]; then
-  xcodegen generate --spec "$ROOT/project.yml" --project "$ROOT/BarcodeScanner.xcodeproj"
+  xcodegen generate --spec "$ROOT/project.yml"
 fi
 
 SIGN_ARGS=(CODE_SIGNING_ALLOWED=NO)
