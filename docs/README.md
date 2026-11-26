@@ -30,6 +30,10 @@
 - 删除 15/30/60/90/180 天前或清空全部，二次确认，截图同步删除
 - 设置页含全部开关与关于页
 
+## 构建状态
+
+已通过 GitHub Actions（`macos-15`）成功编译，产物 `code/build/BarcodeScanner.ipa`（约 1 MB，未签名），Bundle ID `com.huoban.BarcodeScanner`，最低系统 iOS 15.0。
+
 ## 构建 IPA
 
 ### GitHub Actions（推荐）
@@ -59,5 +63,7 @@ bash scripts/build_ipa.sh
 - iOS 原生 API 只提供解码后的字符串，不暴露条码原始字节；字符串编码设置对 UTF-8 字节做最佳-effort 重解码，不能像 Android 那样直接解码 GBK/ISO-8859-1 原始字节。
 - 默认产出未签名 IPA，需签名后才能安装到真机。
 - GS1 标记按解码字符串前缀 `]e0` 判断，与 Android 行为一致（Android 基于 ML Kit rawValue）。
+- AVFoundation 没有独立 UPC-A 类型，UPC-A 由 EAN-13（前导 0）识别并显示；Codabar 需 iOS 15.4+（目标系统 15.8.7 满足）。
+- Actions Runner 使用 `macos-15`（`macos-13`/`macos-14` 已退役）。
 
 项目地址：<https://github.com/huoban/ios-BarcodeScanner>
