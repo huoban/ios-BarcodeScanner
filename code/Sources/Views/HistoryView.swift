@@ -15,7 +15,6 @@ private enum Deletion: Identifiable {
 struct HistoryView: View {
     @EnvironmentObject private var preferences: Preferences
     @EnvironmentObject private var store: HistoryStore
-    @Environment(\.presentationMode) private var presentationMode
 
     @State private var query = ""
     @State private var localRecords: [HistoryRecord] = []
@@ -23,79 +22,75 @@ struct HistoryView: View {
     @State private var showDeleteMenu = false
     @State private var pendingDeletion: Deletion?
     @State private var shareURL: URL?
+    @State private var previewPath: String?
     @State private var toast: String?
     @State private var searchTask: DispatchWorkItem?
     @State private var generation = 0
 
-    let onOpenImage: (String) -> Void
-
     var body: some View {
-        NavigationView {
-            VStack(spacing: 8) {
-                TextField("搜索扫码内容", text: $query)
-                    .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal)
+        VStack(spacing: 8) {
+            TextField("搜索扫码内容", text: $query)
+                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal)
 
-                if localRecords.isEmpty && remoteItems.isEmpty {
-                    Text("暂无历史记录")
-                        .foregroundColor(.secondary)
-                        .frame(maxHeight: .infinity)
-                } else {
-                    List {
-                        ForEach(localRecords, id: \.id) { record in
-                            localRow(record)
-                        }
-                        ForEach(remoteItems) { item in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.title).foregroundColor(Color(red: 0.10, green: 0.46, blue: 0.82))
-                                if let time = item.time {
-                                    Text(time).font(.caption).foregroundColor(.secondary)
-                                }
+            if localRecords.isEmpty && remoteItems.isEmpty {
+                Text("暂无历史记录")
+                    .foregroundColor(.secondary)
+                    .frame(maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(localRecords, id: \.id) { record in
+                        localRow(record)
+                    }
+                    ForEach(remoteItems) { item in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.title).foregroundColor(Color(red: 0.10, green: 0.46, blue: 0.82))
+                            if let time = item.time {
+                                Text(time).font(.caption).foregroundColor(.secondary)
                             }
                         }
                     }
-                    .listStyle(.plain)
                 }
+                .listStyle(.plain)
+            }
 
-                if let toast = toast {
-                    Text(toast)
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(6)
-                }
-            }
-            .navigationTitle("历史记录")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button("导出 CSV") { self.exportCSV() }
-                        Button("删除历史记录", role: .destructive) { self.showDeleteMenu = true }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("关闭") { self.presentationMode.wrappedValue.dismiss() }
-                }
-            }
-            .confirmationDialog("删除历史记录", isPresented: $showDeleteMenu, titleVisibility: .visible) {
-                ForEach([15, 30, 60, 90, 180], id: \.self) { days in
-                    Button("删除 \(days) 天前") { self.pendingDeletion = .days(days) }
-                }
-                Button("清空全部历史", role: .destructive) { self.pendingDeletion = .all }
-                Button("取消", role: .cancel) {}
-            }
-            .alert(item: $pendingDeletion) { deletion in
-                self.alert(for: deletion)
-            }
-            .sheet(isPresented: Binding(get: { self.shareURL != nil }, set: { if !$0 { self.shareURL = nil } })) {
-                if let url = self.shareURL { ShareSheet(items: [url]) }
+            if let toast = toast {
+                Text(toast)
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.black.opacity(0.7))
+                    .cornerRadius(6)
             }
         }
+        .navigationTitle("历史记录")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(false)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button("导出 CSV") { self.exportCSV() }
+                    Button("删除历史记录", role: .destructive) { self.showDeleteMenu = true }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
+        .confirmationDialog("删除历史记录", isPresented: $showDeleteMenu, titleVisibility: .visible) {
+            ForEach([15, 30, 60, 90, 180], id: \.self) { days in
+                Button("删除 \(days) 天前") { self.pendingDeletion = .days(days) }
+            }
+            Button("清空全部历史", role: .destructive) { self.pendingDeletion = .all }
+            Button("取消", role: .cancel) {}
+        }
+        .alert(item: $pendingDeletion) { deletion in
+            self.alert(for: deletion)
+        }
+        .sheet(isPresented: Binding(get: { self.shareURL != nil }, set: { if !$0 { self.shareURL = nil } })) {
+            if let url = self.shareURL { ShareSheet(items: [url]) }
+        }
+        .background(previewLink)
         .onAppear { self.localRecords = store.allRecords() }
         .onChange(of: query) { value in
             let term = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -108,6 +103,26 @@ struct HistoryView: View {
         }
     }
 
+    private var previewLink: some View {
+        NavigationLink(
+            destination: Group {
+                if let path = previewPath {
+                    ZoomableImageView(path: path)
+                        .navigationTitle("图片预览")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .navigationBarHidden(false)
+                } else {
+                    EmptyView()
+                }
+            },
+            isActive: Binding(
+                get: { self.previewPath != nil },
+                set: { if !$0 { self.previewPath = nil } }
+            )
+        ) { EmptyView() }
+        .hidden()
+    }
+
     private func localRow(_ record: HistoryRecord) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("\(record.barcodeType): \(record.resultText)")
@@ -118,9 +133,8 @@ struct HistoryView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             SoundPlayer.copyToClipboard(record.resultText)
-            self.toast = "已复制到剪贴板"
             if let path = record.imagePath, ImageStore.image(at: path) != nil {
-                self.onOpenImage(path)
+                self.previewPath = path
             } else {
                 self.toast = "无图片记录"
             }
@@ -142,7 +156,7 @@ struct HistoryView: View {
         guard preferences.remoteQueryEnabled, !term.isEmpty else { return }
 
         let task = DispatchWorkItem {
-            RemoteQuery.fetch(baseURL: preferences.remoteQueryURL, query: term) { result in
+            RemoteQuery.fetch(baseURL: self.preferences.remoteQueryURL, query: term) { result in
                 DispatchQueue.main.async {
                     guard current == self.generation else { return }
                     switch result {

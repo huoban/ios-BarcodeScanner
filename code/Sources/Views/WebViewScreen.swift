@@ -3,26 +3,23 @@ import WebKit
 
 struct WebViewScreen: View {
     let url: URL
-    let onDismiss: () -> Void
 
     @State private var webView = WKWebView(frame: .zero)
     @State private var canGoBack = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button("关闭") { self.onDismiss() }
-                Spacer()
-                Text("提交").font(.headline)
-                Spacer()
-                Button("后退") {
-                    if self.canGoBack { self.webView.goBack() }
+        WebViewContainer(webView: webView, url: url, canGoBack: $canGoBack)
+            .navigationTitle("提交")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarHidden(false)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("后退") {
+                        if self.canGoBack { self.webView.goBack() }
+                    }
+                    .disabled(!canGoBack)
                 }
-                .disabled(!canGoBack)
             }
-            .padding()
-            WebViewContainer(webView: webView, url: url, canGoBack: $canGoBack)
-        }
     }
 }
 

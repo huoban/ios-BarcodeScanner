@@ -83,11 +83,6 @@ final class Preferences: ObservableObject {
         get { flag("useFrontCamera", false) }
         set { setFlag(newValue, "useFrontCamera") }
     }
-    var initialZoom: String {
-        get { text("initialZoom", "0") }
-        set { setText(newValue, "initialZoom") }
-    }
-
     var soundEnabled: Bool {
         get { flag("notificationSoundEnabled", true) }
         set { setFlag(newValue, "notificationSoundEnabled") }

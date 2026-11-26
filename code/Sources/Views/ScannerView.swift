@@ -2,16 +2,6 @@ import AVFoundation
 import CoreMedia
 import SwiftUI
 
-private struct WebItem: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-private struct ImageItem: Identifiable {
-    let id = UUID()
-    let path: String
-}
-
 struct ScannerView: View {
     @EnvironmentObject private var preferences: Preferences
     @EnvironmentObject private var store: HistoryStore
@@ -23,13 +13,16 @@ struct ScannerView: View {
     @State private var showResult = false
     @State private var showSettings = false
     @State private var showHistory = false
+    @State private var showWeb = false
+    @State private var webURL: URL?
     @State private var showPermissionAlert = false
-    @State private var webItem: WebItem?
-    @State private var imageItem: ImageItem?
     @State private var toast: String?
     @State private var isFlashOn = false
-    @State private var isZoomed = false
     @State private var scanStartTime = Date()
+
+    private var isSubpageActive: Bool {
+        showSettings || showHistory || showWeb
+    }
 
     private var scannerSignature: String {
         let values: [Any] = [
@@ -37,63 +30,77 @@ struct ScannerView: View {
             preferences.upceanEnabled, preferences.code128Enabled, preferences.pdfEnabled,
             preferences.aztecEnabled, preferences.code93Enabled, preferences.code2of5Enabled,
             preferences.codabarEnabled, preferences.useFrontCamera, preferences.scanOrientation,
-            preferences.scanningResolution, preferences.stringEncoding, preferences.initialZoom
+            preferences.scanningResolution, preferences.stringEncoding
         ]
         return values.map { String(describing: $0) }.joined(separator: "|")
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                CameraPreview(scanner: scanner)
-                    .ignoresSafeArea()
+        NavigationView {
+            GeometryReader { geometry in
+                ZStack {
+                    CameraPreview(scanner: scanner)
+                        .ignoresSafeArea()
 
-                ViewfinderOverlay(holeFrame: viewfinderFrame(in: geometry.size))
-                    .ignoresSafeArea()
+                    ViewfinderOverlay(holeFrame: viewfinderFrame(in: geometry.size))
+                        .ignoresSafeArea()
 
-                Rectangle()
-                    .fill(Color.clear)
-                    .contentShape(Rectangle())
-                    .onTapGesture { self.dismissResult() }
+                    Rectangle()
+                        .fill(Color.clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture { self.dismissResult() }
 
-                VStack {
-                    Spacer()
-                    HStack {
+                    VStack {
                         Spacer()
-                        controlButtons
+                        HStack {
+                            Spacer()
+                            controlButtons
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 32)
                     }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 32)
-                }
 
-                if showResult, let result = detectedResult {
-                    resultCard(result: result)
-                }
+                    if showResult, let result = detectedResult {
+                        resultCard(result: result)
+                    }
 
-                if let toast = toast {
-                    Text(toast)
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.black.opacity(0.75))
-                        .cornerRadius(8)
-                        .transition(.opacity)
+                    if let toast = toast {
+                        Text(toast)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.black.opacity(0.75))
+                            .cornerRadius(8)
+                            .transition(.opacity)
+                    }
                 }
             }
+            .navigationBarHidden(true)
+            .background(navigationLinks)
         }
-        .onAppear(perform: authorizeAndStart)
+        .navigationViewStyle(.stack)
+        .onAppear {
+            self.showWelcomeIfNeeded()
+            self.prepareCamera()
+        }
         .onDisappear { self.scanner.stop() }
         .onChange(of: scenePhase) { phase in
             if phase == .active {
-                self.authorizeAndStart()
+                self.prepareCamera()
             } else {
                 self.scanner.stop()
             }
         }
+        .onChange(of: showSettings) { _ in self.syncCameraState() }
+        .onChange(of: showHistory) { _ in self.syncCameraState() }
+        .onChange(of: showWeb) { _ in self.syncCameraState() }
+        .onChange(of: showResult) { _ in self.syncCameraState() }
         .onChange(of: scannerSignature) { _ in
+            // 设置在子页面中修改时先不重启相机，返回首页后由 syncCameraState 应用
+            guard !self.isSubpageActive else { return }
             self.scanner.restart()
-            self.scanner.setPaused(false)
+            self.scanner.setPaused(self.showResult)
         }
         .onReceive(scanner.$detected) { value in
             guard let (result, buffer) = value else { return }
@@ -102,43 +109,37 @@ struct ScannerView: View {
         }
         .onChange(of: toast) { _ in
             guard self.toast != nil else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.toast = nil }
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsView().environmentObject(self.preferences)
-        }
-        .sheet(isPresented: $showHistory) {
-            HistoryView(onOpenImage: { self.imageItem = ImageItem(path: $0) })
-                .environmentObject(self.preferences)
-                .environmentObject(self.store)
-        }
-        .sheet(item: $webItem) { item in
-            WebViewScreen(url: item.url, onDismiss: self.resumeAfterSubsheet)
-        }
-        .sheet(item: $imageItem) { item in
-            NavigationView {
-                ZoomableImageView(path: item.path)
-                    .navigationTitle("图片预览")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button("关闭") { self.imageItem = nil }
-                        }
-                    }
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { self.toast = nil }
         }
         .alert(isPresented: $showPermissionAlert) {
             Alert(title: Text("需要相机权限"), message: Text("请在系统设置中允许使用相机"), dismissButton: .default(Text("知道了")))
         }
     }
 
+    @ViewBuilder
+    private var navigationLinks: some View {
+        ZStack {
+            NavigationLink(
+                destination: SettingsView().environmentObject(self.preferences),
+                isActive: $showSettings
+            ) { EmptyView() }
+            NavigationLink(
+                destination: HistoryView()
+                    .environmentObject(self.preferences)
+                    .environmentObject(self.store),
+                isActive: $showHistory
+            ) { EmptyView() }
+            NavigationLink(
+                destination: WebViewScreen(url: webURL ?? URL(string: "about:blank")!),
+                isActive: $showWeb
+            ) { EmptyView() }
+        }
+        .hidden()
+    }
+
     private var controlButtons: some View {
         VStack(spacing: 12) {
             button(systemName: "gearshape") { self.showSettings = true }
-            button(systemName: isZoomed ? "zoom.in" : "zoom.out") {
-                self.scanner.toggleZoom()
-                self.isZoomed.toggle()
-            }
             button(systemName: isFlashOn ? "bolt.fill" : "bolt") {
                 self.isFlashOn = self.scanner.toggleFlash()
             }
@@ -172,14 +173,24 @@ struct ScannerView: View {
         return CGRect(x: (size.width - width) / 2, y: (size.height - height) / 2, width: width, height: height)
     }
 
-    private func authorizeAndStart() {
+    private func showWelcomeIfNeeded() {
+        guard preferences.isFirstLaunch else { return }
+        preferences.isFirstLaunch = false
+        toast = "欢迎使用条码扫描记录！将摄像头对准条码即可自动识别。"
+    }
+
+    private func prepareCamera() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            scanner.start()
+            syncCameraState()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { granted in
                 DispatchQueue.main.async {
-                    if granted { self.scanner.start() } else { self.showPermissionAlert = true }
+                    if granted {
+                        self.syncCameraState()
+                    } else {
+                        self.showPermissionAlert = true
+                    }
                 }
             }
         default:
@@ -187,7 +198,26 @@ struct ScannerView: View {
         }
     }
 
+    /// 与 Android onResume/onPause 一致：
+    /// 子页面打开时停止相机；结果层显示时仅暂停解码；只有回到首页且无结果层时才恢复解码。
+    private func syncCameraState() {
+        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        if isSubpageActive {
+            scanner.setPaused(true)
+            scanner.stop()
+        } else if showResult {
+            scanner.setPaused(true)
+            scanner.start()
+        } else {
+            scanner.start()
+            scanner.setPaused(false)
+            scanner.resetConfirmation()
+            scanStartTime = Date()
+        }
+    }
+
     private func handleDetected(result: ScanResult, buffer: CMSampleBuffer?) {
+        // 解码确认时 BarcodeScanner 已同步置为暂停，这里先落盘再决定展示方式
         let path = buffer.flatMap { ImageStore.save(sampleBuffer: $0, timestamp: result.timestamp) }
         store.insert(result: result, imagePath: path)
 
@@ -201,7 +231,8 @@ struct ScannerView: View {
         scanner.setPaused(true)
         if preferences.openURLAutomatically,
            let url = Webhook.finalURL(base: preferences.webhookURL, result: result.text) {
-            webItem = WebItem(url: url)
+            webURL = url
+            showWeb = true
         } else {
             detectedResult = result
             durationText = String(format: "%.1f", Date().timeIntervalSince(scanStartTime))
@@ -212,10 +243,7 @@ struct ScannerView: View {
     private func dismissResult() {
         guard showResult else { return }
         showResult = false
-        resumeAfterSubsheet()
-    }
-
-    private func resumeAfterSubsheet() {
+        detectedResult = nil
         scanner.setPaused(false)
         scanner.resetConfirmation()
         scanStartTime = Date()
@@ -240,7 +268,8 @@ struct ScannerView: View {
             HStack(spacing: 24) {
                 Button("提交") {
                     if let url = Webhook.finalURL(base: self.preferences.webhookURL, result: result.text) {
-                        self.webItem = WebItem(url: url)
+                        self.webURL = url
+                        self.showWeb = true
                     }
                 }
                 .buttonStyle(.borderedProminent)

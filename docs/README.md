@@ -22,13 +22,15 @@
 - 连续 2 帧结果一致才确认；拒绝含控制字符的条码内容
 - 支持 13 种格式：QR、Data Matrix、PDF417、Code 128、Code 39、Code 93、Codabar、EAN-13、EAN-8、UPC-A、UPC-E、ITF、Aztec
 - 扫描方向（水平 ±20° / 全方向）、扫描分辨率（720p / 1080p）、字符串编码设置
-- 前置摄像头、闪光灯、最小/最大变焦切换
+- 前置摄像头、闪光灯（无变焦按钮）
 - 提示音（频率/时长/调制/音量）、振动、自动复制、自动提交
 - 自动提交地址 `{result}` 占位符替换（百分号编码），内置 `WKWebView`
 - 扫码成功保存 JPEG 截图（应用私有目录）
 - 历史记录：本地模糊搜索、远程查询（3 秒防抖、蓝色展示）、截图预览（缩放/双击）、CSV 导出
 - 删除 15/30/60/90/180 天前或清空全部，二次确认，截图同步删除
 - 设置页含全部开关与关于页
+- 设置、历史、图片预览、提交页均为独立全屏页面（NavigationView push）
+- 解码确认瞬间即暂停；结果层显示、子页面打开、提交页打开期间均不重复识别；返回首页且无结果层后恢复
 
 ## 构建状态
 
@@ -45,7 +47,7 @@
 ```bash
 brew install xcodegen
 cd code
-xcodegen generate --spec project.yml --project BarcodeScanner.xcodeproj
+xcodegen generate --spec project.yml
 bash scripts/build_ipa.sh
 ```
 

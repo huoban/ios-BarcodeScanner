@@ -90,21 +90,6 @@ final class BarcodeScanner: NSObject, ObservableObject {
         return enabled
     }
 
-    func toggleZoom() {
-        sessionQueue.sync { [weak self] in
-            guard let self = self, let device = self.device else { return }
-            let minimum = device.minAvailableVideoZoomFactor
-            let maximum = min(device.maxAvailableVideoZoomFactor, 6)
-            do {
-                try device.lockForConfiguration()
-                device.videoZoomFactor = device.videoZoomFactor <= minimum + 0.01 ? maximum : minimum
-                device.unlockForConfiguration()
-            } catch {
-                NSLog("toggle zoom failed: \(error)")
-            }
-        }
-    }
-
     private func configure() {
         horizontalOnly = preferences.scanOrientation == "Horizontal"
         encoding = preferences.stringEncoding
@@ -138,25 +123,9 @@ final class BarcodeScanner: NSObject, ObservableObject {
         videoOutput.setSampleBufferDelegate(self, queue: outputQueue)
         if session.canAddOutput(videoOutput) { session.addOutput(videoOutput) }
 
-        if let initialZoom = Float(preferences.initialZoom), initialZoom > 0,
-           let device = device, device.isZoomSupported() {
-            do {
-                try device.lockForConfiguration()
-                let zoom = CGFloat(initialZoom)
-                device.videoZoomFactor = min(max(zoom, device.minAvailableVideoZoomFactor), device.maxAvailableVideoZoomFactor)
-                device.unlockForConfiguration()
-            } catch {
-                NSLog("apply initial zoom failed: \(error)")
-            }
-        }
-
         session.commitConfiguration()
         resetConfirmation()
     }
-}
-
-extension AVCaptureDevice {
-    func isZoomSupported() -> Bool { maxAvailableVideoZoomFactor > minAvailableVideoZoomFactor }
 }
 
 extension BarcodeScanner: AVCaptureVideoDataOutputSampleBufferDelegate {
@@ -209,6 +178,8 @@ extension BarcodeScanner: AVCaptureMetadataOutputObjectsDelegate {
                 emitted = (result, buffer)
                 pendingText = nil
                 confirmCount = 0
+                // 确认成功后立即暂停解码，避免保存截图/入库/提示期间重复识别
+                isPaused = true
             }
         } else {
             pendingText = text
