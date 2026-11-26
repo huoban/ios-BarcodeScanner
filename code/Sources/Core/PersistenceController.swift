@@ -27,15 +27,15 @@ final class HistoryStore: ObservableObject {
         entity.name = "HistoryRecord"
         entity.managedObjectClassName = NSStringFromClass(HistoryRecord.self)
         entity.properties = [
-            attribute("id", .integer64AttributeType, optional: false),
-            attribute("barcodeType", .stringAttributeType, optional: false),
-            attribute("barcodeFormat", .stringAttributeType, optional: false),
-            attribute("resultText", .stringAttributeType, optional: false),
-            attribute("isGS1", .booleanAttributeType, optional: false),
-            attribute("rawBytes", .binaryDataAttributeType, optional: true),
-            attribute("orientation", .integer32AttributeType, optional: false),
-            attribute("timestamp", .integer64AttributeType, optional: false),
-            attribute("imagePath", .stringAttributeType, optional: true)
+            Self.attribute("id", .integer64AttributeType, optional: false),
+            Self.attribute("barcodeType", .stringAttributeType, optional: false),
+            Self.attribute("barcodeFormat", .stringAttributeType, optional: false),
+            Self.attribute("resultText", .stringAttributeType, optional: false),
+            Self.attribute("isGS1", .booleanAttributeType, optional: false),
+            Self.attribute("rawBytes", .binaryDataAttributeType, optional: true),
+            Self.attribute("orientation", .integer32AttributeType, optional: false),
+            Self.attribute("timestamp", .integer64AttributeType, optional: false),
+            Self.attribute("imagePath", .stringAttributeType, optional: true)
         ]
         model.entities = [entity]
 
@@ -49,7 +49,7 @@ final class HistoryStore: ObservableObject {
         context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
 
-    private func attribute(_ name: String, _ type: NSAttributeType, optional: Bool) -> NSAttributeDescription {
+    private static func attribute(_ name: String, _ type: NSAttributeType, optional: Bool) -> NSAttributeDescription {
         let description = NSAttributeDescription()
         description.name = name
         description.attributeType = type
