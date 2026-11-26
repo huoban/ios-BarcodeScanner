@@ -230,10 +230,13 @@ extension BarcodeScanner: AVCaptureMetadataOutputObjectsDelegate {
     /// iOS 原生只提供解码字符串，按所选字符集对 UTF-8 字节做最佳-effort 重解码
     private static func decode(_ text: String, encoding: String) -> String {
         guard encoding != "UTF-8" else { return text }
-        let cfEncoding: CFStringEncoding = encoding == "GBK"
-            ? kCFStringEncodingGB_18030_2000
-            : kCFStringEncodingISOLatin1
-        let nsEncoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(cfEncoding))
+        let nsEncoding: String.Encoding
+        if encoding == "GBK" {
+            let cfEncoding = CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)
+            nsEncoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(cfEncoding))
+        } else {
+            nsEncoding = .isoLatin1
+        }
         return String(bytes: Array(text.utf8), encoding: nsEncoding) ?? text
     }
 

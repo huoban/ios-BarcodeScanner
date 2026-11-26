@@ -37,13 +37,12 @@ final class ViewfinderDrawView: UIView {
 
     override func draw(_ rect: CGRect) {
         super.draw(rect)
-        let mask = UIBezierPath(rect: rect)
         let hole = UIBezierPath(roundedRect: holeFrame, cornerRadius: 8)
-        mask.append(hole)
-        if let context = UIGraphicsGetCurrentContext() {
-            context.setFillColor(UIColor.black.withAlphaComponent(0.5).cgColor)
-            context.fill(mask.cgPath, using: .evenOdd)
-        }
+        UIColor.black.withAlphaComponent(0.5).setFill()
+        UIRectFill(CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: max(0, holeFrame.minY - rect.minY)))
+        UIRectFill(CGRect(x: rect.minX, y: holeFrame.maxY, width: rect.width, height: max(0, rect.maxY - holeFrame.maxY)))
+        UIRectFill(CGRect(x: rect.minX, y: holeFrame.minY, width: max(0, holeFrame.minX - rect.minX), height: holeFrame.height))
+        UIRectFill(CGRect(x: holeFrame.maxX, y: holeFrame.minY, width: max(0, rect.maxX - holeFrame.maxX), height: holeFrame.height))
         UIColor.green.setStroke()
         hole.lineWidth = 2
         hole.stroke()
